@@ -1,0 +1,17 @@
+apiVersion: app.redislabs.com/v1alpha1
+kind: RedisEnterpriseCluster
+metadata:
+  name: redis-enterprise
+  namespace: redis
+spec:
+  nodes: 3
+  persistentSpec:
+    storageClassName: standard
+    volumeSize: 10Gi
+  redisEnterpriseNodeResources:
+    requests:
+      cpu: "100m"
+      memory: "1Gi"
+    limits:
+      cpu: "1"
+      memory: "2Gi"

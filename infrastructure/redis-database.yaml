@@ -1,0 +1,10 @@
+apiVersion: app.redislabs.com/v1alpha1
+kind: RedisEnterpriseDatabase
+metadata:
+  name: prod-db
+  namespace: redis
+spec:
+  redisEnterpriseCluster:
+    name: redis-enterprise
+  memorySize: 100MB
+  replication: true
