@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     redis_host: str = "localhost"
     redis_port: int = 12000
     redis_password: str = ""
+    redis_cluster_mode: bool = False
     aws_region: str = "us-east-1"
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None

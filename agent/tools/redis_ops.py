@@ -2,7 +2,17 @@ import redis
 from langchain.tools import tool
 from core.config import settings
 
+from redis.cluster import RedisCluster
+
 def get_redis_client():
+    if settings.redis_cluster_mode:
+        return RedisCluster(
+            host=settings.redis_host,
+            port=settings.redis_port,
+            password=settings.redis_password,
+            decode_responses=True,
+            skip_full_coverage_check=True
+        )
     return redis.Redis(
         host=settings.redis_host,
         port=settings.redis_port,

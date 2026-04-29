@@ -144,3 +144,17 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
+
+      - name: Bootstrap Redis Cluster
+        run: |
+          TASK_FAMILY=$(terraform output -raw bootstrap_task_family)
+          SUBNETS=$(terraform output -json private_subnets | jq -r 'join(",")')
+          SG_ID=$(terraform output -raw redis_cluster_sg_id)
+          
+          echo "Running bootstrap task: $TASK_FAMILY"
+          aws ecs run-task \
+            --cluster redis-agent-cluster \
+            --task-definition $TASK_FAMILY \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG_ID],assignPublicIp=DISABLED}" \
+            --region ${{ env.AWS_REGION }}
