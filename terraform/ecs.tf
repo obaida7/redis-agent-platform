@@ -53,13 +53,27 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# ---- IAM Role for AWS Backup ----
+resource "aws_iam_role" "backup" {
+  name = "redis-backup-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "backup.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
 resource "aws_iam_role_policy_attachment" "backup_policy" {
-  role       = aws_iam_role.ecs_task_execution.name
+  role       = aws_iam_role.backup.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup"
 }
 
 resource "aws_iam_role_policy_attachment" "restore_policy" {
-  role       = aws_iam_role.ecs_task_execution.name
+  role       = aws_iam_role.backup.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores"
 }
 
@@ -407,6 +421,7 @@ resource "aws_ecs_task_definition" "redis" {
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
     name      = "redis"
@@ -496,7 +511,7 @@ resource "aws_backup_plan" "redis" {
 }
 
 resource "aws_backup_selection" "redis" {
-  iam_role_arn = aws_iam_role.ecs_task_execution.arn # Needs backup permissions
+  iam_role_arn = aws_iam_role.backup.arn
   name         = "redis-efs-selection"
   plan_id      = aws_backup_plan.redis.id
 
