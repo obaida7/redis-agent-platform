@@ -20,35 +20,17 @@ resource "helm_release" "argocd" {
   depends_on = [kubernetes_namespace.argocd]
 }
 
-# The ArgoCD Application manifest that tells ArgoCD to sync our Git repository
-resource "kubernetes_manifest" "redis_app" {
-  manifest = {
-    apiVersion = "argoproj.io/v1alpha1"
-    kind       = "Application"
-    metadata = {
-      name      = "redis-infrastructure"
-      namespace = "argocd"
-    }
-    spec = {
-      project = "default"
-      source = {
-        repoURL        = "https://github.com/obaida7/redis-agent-platform.git"
-        targetRevision = "HEAD"
-        path           = "infrastructure"
-      }
-      destination = {
-        server    = "https://kubernetes.default.svc"
-        namespace = "redis"
-      }
-      syncPolicy = {
-        automated = {
-          prune    = true
-          selfHeal = true
-        }
-        syncOptions = ["CreateNamespace=true"]
-      }
-    }
-  }
-
+# Apply the ArgoCD Application via kubectl after ArgoCD is running.
+# kubectl_manifest requires a live cluster at plan time so we use
+# a null_resource with local-exec instead.
+resource "null_resource" "argocd_app" {
   depends_on = [helm_release.argocd]
+
+  provisioner "local-exec" {
+    command = <<-EOF
+      aws eks update-kubeconfig --name ${module.eks.cluster_name} --region us-east-1
+      kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=300s
+      kubectl apply -f https://raw.githubusercontent.com/obaida7/redis-agent-platform/main/infrastructure/argocd/redis-app.yaml
+    EOF
+  }
 }
