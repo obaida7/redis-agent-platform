@@ -38,22 +38,9 @@ cd ..
 
 ### 2. GitOps Deployment (ArgoCD)
 
-Instead of manually applying Kubernetes manifests, we use ArgoCD to pull infrastructure state from Git.
+The infrastructure deployment is completely "Zero-Touch". When Terraform finishes provisioning the EKS cluster, it automatically installs ArgoCD via Helm and applies the GitOps Application manifest.
 
-First, install ArgoCD into the cluster:
-```bash
-kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-```
-
-Once the ArgoCD server is running, apply the GitOps Application manifest:
-```bash
-# Before running this, ensure your code is pushed to a Git repository 
-# and update the repoURL in infrastructure/argocd/redis-app.yaml
-kubectl apply -f infrastructure/argocd/redis-app.yaml
-```
-
-ArgoCD will automatically sync and deploy the Redis Operator, Cluster, Database, and monitoring stack.
+ArgoCD will automatically sync and deploy the Redis Operator, Cluster, Database, and monitoring stack from this Git repository.
 
 ### 3. Setup the AI Control Plane (CI Pipeline)
 
