@@ -232,6 +232,7 @@ resource "aws_ecs_service" "agent" {
   task_definition = aws_ecs_task_definition.agent.arn
   desired_count   = 2
   launch_type     = "FARGATE"
+  force_new_deployment = true
 
   network_configuration {
     subnets          = module.vpc.private_subnets
