@@ -29,7 +29,7 @@ def setup_sre_agent():
     # Initialize the LLM (Native AWS Bedrock)
     llm = ChatBedrock(
         client=bedrock_client,
-        model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        model_id="anthropic.claude-sonnet-4-6",
         model_kwargs={"temperature": 0}
     )
     
