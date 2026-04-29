@@ -54,10 +54,12 @@ jobs:
       - name: Ensure Terraform state S3 bucket exists
         if: github.ref == 'refs/heads/main'
         run: |
-          aws s3api head-bucket --bucket redis-agent-tfstate 2>/dev/null || \
-          aws s3api create-bucket \
-            --bucket redis-agent-tfstate \
-            --region ${{ env.AWS_REGION }}
+          if ! aws s3api head-bucket --bucket redis-agent-tfstate 2>/dev/null; then
+            echo "Bucket does not exist, creating..."
+            aws s3api create-bucket --bucket redis-agent-tfstate --region ${{ env.AWS_REGION }}
+          else
+            echo "Bucket already exists, skipping creation."
+          fi
 
       - name: Terraform Init and Apply (ECR only)
         if: github.ref == 'refs/heads/main'
