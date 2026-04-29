@@ -45,16 +45,31 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
+      - name: Setup Terraform
+        if: github.ref == 'refs/heads/main'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+
+      - name: Ensure Terraform state S3 bucket exists
+        if: github.ref == 'refs/heads/main'
+        run: |
+          aws s3api head-bucket --bucket redis-agent-tfstate 2>/dev/null || \
+          aws s3api create-bucket \
+            --bucket redis-agent-tfstate \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Terraform Init and Apply (ECR only)
+        if: github.ref == 'refs/heads/main'
+        working-directory: terraform
+        run: |
+          terraform init -reconfigure
+          terraform apply -target=aws_ecr_repository.agent -auto-approve
+
       - name: Login to Amazon ECR
         if: github.ref == 'refs/heads/main'
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Ensure ECR repository exists
-        if: github.ref == 'refs/heads/main'
-        run: |
-          aws ecr describe-repositories --repository-names $ECR_REPOSITORY --region $AWS_REGION 2>/dev/null || \
-          aws ecr create-repository --repository-name $ECR_REPOSITORY --region $AWS_REGION
 
       - name: Build, tag, and push Docker image to ECR
         if: github.ref == 'refs/heads/main'
@@ -84,14 +99,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-
-      - name: Ensure Terraform state S3 bucket exists
-        working-directory: .
-        run: |
-          aws s3api head-bucket --bucket redis-agent-tfstate 2>/dev/null || \
-          aws s3api create-bucket \
-            --bucket redis-agent-tfstate \
-            --region us-east-1
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
