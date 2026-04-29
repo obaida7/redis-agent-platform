@@ -1,86 +1,67 @@
-# 🤖 Agentic Redis SRE Platform (Serverless)
+# 🤖 Agentic Redis SRE Platform (Enterprise Sharded)
 
 [![Build and Deploy](https://github.com/obaida7/redis-agent-platform/actions/workflows/deploy.yaml/badge.svg)](https://github.com/obaida7/redis-agent-platform/actions/workflows/deploy.yaml)
 
-A production-grade **Agentic AI SRE Control Plane** designed to automate the operational management of Redis infrastructure. This platform utilizes **Claude 4.6 Sonnet** and **LangGraph** to autonomously diagnose, scale, and heal Redis environments using natural language reasoning.
+A production-grade **Agentic AI SRE Control Plane** designed to automate the operational management of distributed Redis infrastructure. This platform utilizes **Claude 3 Haiku** and **LangGraph** to autonomously diagnose, shard, and heal a multi-node Redis cluster.
 
-## 🏗️ Architecture: Serverless & Elastic
+## 🏗️ Architecture: Distributed & Resilient
 
-This project has been migrated to a fully **Serverless AWS Architecture** to ensure high availability, zero-maintenance overhead, and rapid deployment.
+The platform has been engineered for "Enterprise-Grade" stability in a serverless environment:
 
-1.  **AI Control Plane**: A Python FastAPI backend running as an **ECS Fargate** service. It uses **LangGraph** for cyclic reasoning and **AWS Bedrock** as the brain.
-2.  **Infrastructure-as-Code**: A bulletproof **Terraform** stack that provisions a custom VPC, ECS Cluster, Application Load Balancer (ALB), and ECR Registry.
-3.  **Self-Healing CI/CD**: A "Zero-Touch" GitHub Actions pipeline that automatically bootstraps the S3 state backend and DynamoDB locking in any clean AWS account.
+1.  **Sharded Redis Cluster**: A 6-node topology (3 Masters + 3 Replicas) providing high availability and horizontal scaling across 3 Availability Zones.
+2.  **Stateful Fargate Persistence**: Utilizes **AWS EFS (Elastic File System)** with dedicated access points per node. This ensures that cluster identity and data (AOF) persist even across container restarts.
+3.  **Disaster Recovery (DR)**: Integrated with **AWS Backup** for automated, daily snapshots of the entire Redis storage layer with a 30-day retention policy.
+4.  **Self-Healing Bootstrap**: A custom "Cluster Orchestrator" in the CI/CD pipeline that handles DNS propagation waits, node resets, and automated sharding.
+
+---
+
+## 🛠️ SRE Toolset (Cluster-Aware)
+
+The AI Agent is equipped with specialized tools designed for distributed environments:
+
+-   **Topology Audit**: `get_cluster_nodes` scans all 6 shards to verify master/replica health and slot coverage.
+-   **Distributed Noisy Neighbor**: `detect_noisy_neighbor` iterates across all 3 masters to find and disconnect abusive clients cluster-wide.
+-   **Cache Stampede Mitigation**: Identifies hot keys and applies probabilistic jitter to prevent backend thundering herds.
+-   **Auto-Remediation**: The agent performs autonomous Root Cause Analysis (RCA) and can execute hard resets or sharding repairs if it detects an unhealthy cluster state.
 
 ---
 
 ## 🚀 "Zero-Touch" Deployment
 
-This platform is designed to be deployed into a completely empty AWS account with a single push.
+The platform is designed to be deployed into a completely empty AWS account with a single push.
 
 ### 1. Prerequisites
-- AWS Access Keys with Administrator access.
-- A GitHub repository with the following secrets configured:
-    - `AWS_ACCESS_KEY_ID`
-    - `AWS_SECRET_ACCESS_KEY`
-    - `AWS_SESSION_TOKEN` (if using temporary credentials)
+- AWS Secrets (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`) configured in GitHub.
 
-### 2. Automatic Bootstrap
-The pipeline (`.github/workflows/deploy.yaml`) is self-healing. It will:
-- Detect if the S3 state bucket exists; if not, it creates it.
-- Detect if the DynamoDB lock table exists; if not, it creates it.
-- Provision the ECR registry before the first Docker build.
-
-### 3. Deploy
-Simply push to the `main` branch. The pipeline will:
-1. Build the AI Agent Docker image.
-2. Push it to ECR.
-3. Provision the VPC and ECS Cluster via Terraform.
-4. Launch the Agent as an HA Fargate service (2 replicas across AZs).
-
----
-
-## 🛠️ SRE Toolset (AI-Powered)
-
-The AI Agent is equipped with specialized tools to manage Redis infrastructure:
-
--   **Health & Performance**: `check_redis_health` monitors memory usage, CPU, and connected clients.
--   **Traffic Management**: `detect_noisy_neighbor` identifies abusive clients based on ops/sec.
--   **Incident Response**: `mitigate_noisy_neighbor` disconnects abusive clients automatically.
--   **Performance Optimization**: `detect_cache_stampede` and `apply_jitter_or_lock` mitigate thundering herd problems.
--   **Elasticity**: `scale_redis_replicas` (ready for integration with your Redis cluster).
+### 2. Automatic Lifecycle
+The pipeline (`.github/workflows/deploy.yaml`) handles the entire infrastructure lifecycle:
+- Provisions VPC, ECR, ECS, EFS, and AWS Backup via **Terraform**.
+- Builds and pushes the AI Agent image.
+- **Triggers a Bootstrap Task** to perform the initial cluster handshake once nodes are healthy.
 
 ---
 
 ## 🧪 Testing the Platform
 
-Once the pipeline completes, Terraform will output the `agent_url`.
+Ask the SRE Agent to perform an audit or solve a problem:
 
-### Health Check
-```bash
-curl http://<YOUR_ALB_URL>/health
-```
-
-### Chat with the SRE Agent
-Ask the agent to perform an audit or solve a problem:
+### Cluster Health Audit
 ```bash
 curl -X POST http://<YOUR_ALB_URL>/api/v1/chat \
      -H "Content-Type: application/json" \
-     -d '{"message": "Audit the memory usage of my Redis cluster and look for any noisy neighbors."}'
+     -d '{"message": "Audit the sharding state. List all 6 nodes and confirm if all 16384 slots are covered."}'
+```
+
+### Noisy Neighbor Detection
+```bash
+curl -X POST http://<YOUR_ALB_URL>/api/v1/chat \
+     -H "Content-Type: application/json" \
+     -d '{"message": "Scan all cluster masters for noisy neighbors consuming more than 10MB of memory."}'
 ```
 
 ---
 
 ## 🛡️ Security & Scalability
--   **IAM Roles**: The ECS tasks use a dedicated Task Role with least-privilege access to AWS Bedrock.
--   **Networking**: Tasks run in **Private Subnets**. Only the ALB is public-facing.
--   **Auto-Scaling**: The ECS service automatically scales from **2 to 10 tasks** based on CPU utilization (target 70%).
--   **State Safety**: Terraform uses S3 with DynamoDB state locking to ensure multi-engineer safety.
-
-## 🧰 Tech Stack
--   **Brain**: AWS Bedrock (Claude 4.6 Sonnet)
--   **Logic**: LangGraph / LangChain
--   **API**: FastAPI (Python 3.10)
--   **Infrastructure**: Terraform 1.9
--   **Compute**: AWS ECS Fargate
--   **CI/CD**: GitHub Actions
+-   **IAM Authorization**: EFS mounts are secured via IAM, requiring specific ECS Task Roles.
+-   **Network Isolation**: All Redis nodes run in **Private Subnets**. Communication is handled via **AWS Cloud Map** (Private DNS).
+-   **Auto-Scaling**: The AI Control Plane scales horizontally (2 to 10 tasks) based on CPU utilization.
