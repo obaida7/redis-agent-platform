@@ -15,40 +15,49 @@ The architecture is divided into two layers:
 ## 🚀 Getting Started
 
 ### Prerequisites
-* [Docker](https://docs.docker.com/get-docker/) & [Kind](https://kind.sigs.k8s.io/) (for local Kubernetes)
-* `kubectl`
+* AWS CLI configured (`aws configure`) with Bedrock and EKS access
+* `kubectl` configured with your EKS cluster context (`aws eks update-kubeconfig ...`)
 * Python 3.10+
-* AWS CLI configured with Bedrock access (`aws configure`)
 
-### 1. Deploy the Infrastructure
+### 1. Provision the EKS Cluster (Terraform)
 
-First, spin up a local Kubernetes cluster and deploy the Redis Enterprise Operator:
+First, use the provided Terraform configuration to provision the VPC, EKS cluster, and Node Groups in AWS.
 
 ```bash
-kind create cluster --name redis-prod-cluster
-kubectl create namespace redis
-
-# Apply the Redis Operator, Cluster, and Database
-kubectl apply -f infrastructure/bundle.yaml
-kubectl apply -f infrastructure/redis-app-secret.yaml
-kubectl apply -f infrastructure/redis-enterprise-cluster.yaml
-kubectl apply -f infrastructure/redis-database.yaml
-kubectl apply -f infrastructure/redis-service.yaml
+cd terraform
+terraform init
+terraform apply
 ```
 
-Wait for the operator to provision the database. You can check the status and grab the dynamic port with:
+After the cluster is provisioned, configure your local `kubectl` to connect to it:
+
 ```bash
-kubectl get redb prod-db -n redis
+aws eks update-kubeconfig --region us-east-1 --name redis-prod-cluster
+cd ..
 ```
 
-### 2. Setup the AI Control Plane
+### 2. GitOps Deployment (ArgoCD)
 
-Set up your Python virtual environment and install the dependencies:
+Instead of manually applying Kubernetes manifests, we use ArgoCD to pull infrastructure state from Git.
+
+First, install ArgoCD into the cluster:
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
+
+Once the ArgoCD server is running, apply the GitOps Application manifest:
+```bash
+# Before running this, ensure your code is pushed to a Git repository 
+# and update the repoURL in infrastructure/argocd/redis-app.yaml
+kubectl apply -f infrastructure/argocd/redis-app.yaml
+```
+
+ArgoCD will automatically sync and deploy the Redis Operator, Cluster, Database, and monitoring stack.
+
+### 3. Setup the AI Control Plane (CI Pipeline)
+
+This project includes a **GitHub Actions CI Pipeline** (`.github/workflows/ci.yaml`) and a `Dockerfile` that automatically tests and builds the Python Agentic AI backend whenever code is pushed to `main`.
 
 Create a `.env` file in the root directory:
 ```env
@@ -58,19 +67,18 @@ redis_port=YOUR_GENERATED_PORT
 ```
 *(Note: You can get the generated password using: `kubectl get secret redb-prod-db -n redis -o jsonpath="{.data.password}" | base64 --decode`)*
 
-### 3. Expose Redis Locally
-In a separate terminal, forward the dynamic database port to your local machine:
+### 4. Connect to the Control Plane
+Since this is running in EKS, ensure you are running the agent from an environment that has network access to the EKS cluster's VPC, or set up appropriate ingress/port-forwarding for development:
 ```bash
-kubectl port-forward svc/prod-db <YOUR_PORT>:<YOUR_PORT> -n redis
+kubectl port-forward svc/prod-db 19999:19999 -n redis
 ```
 
 ### 4. Run the Agentic Platform
-Start the FastAPI server:
-```bash
-./run.sh
-```
 
-Navigate to **http://localhost:8000/docs** in your browser. Use the `/api/v1/chat` endpoint and ask the SRE agent a question like:
+Because the infrastructure is deployed in EKS and containerized, the AI agent can be deployed to the cluster or run as a container natively.
+Make sure you provide the agent container with the correct IAM roles to call Bedrock, and pass the Redis connection string via environment variables.
+
+Navigate to your deployed API's `/docs` endpoint in your browser. Use the `/api/v1/chat` endpoint and ask the SRE agent a question like:
 > *"Can you check the health of the Redis database and verify if the Kubernetes pods are stable?"*
 
 ## 🛠️ Built With

@@ -1,0 +1,38 @@
+# Helm values for kube-prometheus-stack
+# To install: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+# helm install prometheus prometheus-community/kube-prometheus-stack -f kube-prometheus-stack.yaml -n monitoring --create-namespace
+
+grafana:
+  enabled: true
+  adminPassword: "admin"
+  ingress:
+    enabled: false
+
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    retention: 15d
+
+# Allow scraping Redis Enterprise Operator metrics
+additionalPrometheusRulesMap:
+  redis-enterprise:
+    groups:
+      - name: redis-alerts
+        rules:
+          - alert: RedisHighMemory
+            expr: sum(redis_memory_used_bytes) by (pod) > 85
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: High memory usage in Redis pod
+
+serviceMonitors:
+  - name: redis-enterprise
+    endpoints:
+      - port: metrics
+        interval: 15s
+    selector:
+      matchLabels:
+        app: redis-enterprise

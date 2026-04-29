@@ -5,7 +5,14 @@ from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import SystemMessage
 
 # Import our custom tools
-from agent.tools.redis_ops import check_redis_health, flush_stale_data
+from agent.tools.redis_ops import (
+    check_redis_health, 
+    flush_stale_data,
+    detect_noisy_neighbor,
+    mitigate_noisy_neighbor,
+    detect_cache_stampede,
+    apply_jitter_or_lock
+)
 from agent.tools.k8s_ops import scale_redis_replicas, check_redis_pods_status
 
 def setup_sre_agent():
@@ -31,7 +38,11 @@ def setup_sre_agent():
         check_redis_health,
         flush_stale_data,
         scale_redis_replicas,
-        check_redis_pods_status
+        check_redis_pods_status,
+        detect_noisy_neighbor,
+        mitigate_noisy_neighbor,
+        detect_cache_stampede,
+        apply_jitter_or_lock
     ]
     
     # Define the system prompt
@@ -39,7 +50,10 @@ def setup_sre_agent():
         "You are an expert Senior Site Reliability Engineer (SRE) and Platform Engineer "
         "responsible for managing a massive enterprise Redis infrastructure at Wells Fargo. "
         "You have deep knowledge of Redis architecture, Kubernetes (OpenShift/K8s), and Python automation. "
-        "You can use tools to diagnose issues, check cluster health, and perform operational tasks like scaling."
+        "You can use tools to diagnose issues, check cluster health, and perform operational tasks like scaling. "
+        "If you suspect a 'noisy neighbor' problem, use detect_noisy_neighbor to find abusive clients, "
+        "and mitigate_noisy_neighbor to disconnect them. "
+        "If there are sudden CPU spikes or key expiration issues, use detect_cache_stampede and apply_jitter_or_lock."
     ))
     
     # Initialize a tool-calling agent using LangGraph

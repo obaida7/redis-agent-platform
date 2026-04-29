@@ -8,3 +8,6 @@ spec:
     name: redis-enterprise
   memorySize: 100MB
   replication: true
+  clientSSLEngine: require
+  passwordSecret: redb-prod-db
+  port: 19999
