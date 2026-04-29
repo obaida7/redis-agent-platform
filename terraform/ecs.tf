@@ -241,7 +241,8 @@ resource "aws_ecs_task_definition" "agent" {
       { name = "aws_region", value = "us-east-1" },
       { name = "redis_host", value = "redis-0.redis.local" },
       { name = "redis_port", value = "6379" },
-      { name = "redis_cluster_mode", value = "true" }
+      { name = "redis_cluster_mode", value = "true" },
+      { name = "DEPLOY_TIMESTAMP", value = "${timestamp()}" }
     ]
 
     logConfiguration = {
