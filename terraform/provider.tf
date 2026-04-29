@@ -9,9 +9,10 @@ terraform {
   }
 
   backend "s3" {
-    bucket = "redis-agent-tfstate"
-    key    = "ecs/terraform.tfstate"
-    region = "us-east-1"
+    bucket         = "redis-agent-tfstate"
+    key            = "ecs/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "redis-agent-tflock"
   }
 }
 
