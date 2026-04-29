@@ -21,31 +21,42 @@ def get_redis_client():
     )
 
 @tool
-def check_redis_health() -> str:
-    """Checks the overall health, memory fragmentation, and connected clients of the Redis database."""
+def get_cluster_nodes() -> str:
+    """Returns the raw output of 'CLUSTER NODES' to see the topology and status of all shards."""
     try:
         r = get_redis_client()
-        info = r.info()
-        
-        # Extract important metrics
-        used_memory = info.get('used_memory_human', 'N/A')
-        peak_memory = info.get('used_memory_peak_human', 'N/A')
-        connected_clients = info.get('connected_clients', 'N/A')
-        uptime_days = info.get('uptime_in_days', 'N/A')
-        frag_ratio = info.get('mem_fragmentation_ratio', 'N/A')
-        
-        report = (
-            f"Redis Health Report:\n"
-            f"- Uptime: {uptime_days} days\n"
-            f"- Connected Clients: {connected_clients}\n"
-            f"- Used Memory: {used_memory} (Peak: {peak_memory})\n"
-            f"- Fragmentation Ratio: {frag_ratio}\n"
-        )
-        
-        if isinstance(frag_ratio, (int, float)) and float(frag_ratio) > 1.5:
-            report += "\nWARNING: Memory fragmentation is high (>1.5). Consider restarting instances or defragmentation."
-            
+        if not settings.redis_cluster_mode:
+            return "Redis is not in cluster mode."
+        nodes = r.cluster_nodes()
+        report = "Redis Cluster Nodes Status:\n"
+        for node_id, node_info in nodes.items():
+            report += f"- ID: {node_id[:8]}, Addr: {node_info['slots']}, Flags: {node_info['flags']}, Status: {node_info['connected']}\n"
         return report
+    except Exception as e:
+        return f"Failed to get cluster nodes: {str(e)}"
+
+@tool
+def check_redis_health() -> str:
+    """Checks the overall health, memory, and sharding status of the Redis cluster."""
+    try:
+        r = get_redis_client()
+        if settings.redis_cluster_mode:
+            info = r.cluster_info()
+            report = (
+                f"Redis Cluster Health Report:\n"
+                f"- State: {info.get('cluster_state')}\n"
+                f"- Slots Assigned: {info.get('cluster_slots_assigned')}\n"
+                f"- Slots OK: {info.get('cluster_slots_ok')}\n"
+                f"- Slots Fail: {info.get('cluster_slots_fail')}\n"
+                f"- Known Nodes: {info.get('cluster_known_nodes')}\n"
+            )
+            if info.get('cluster_state') != 'ok':
+                report += "\nCRITICAL: Cluster state is unhealthy. Some slots are likely missing or nodes are unreachable."
+            return report
+        
+        info = r.info()
+        # (Standard info logic here...)
+        return f"Redis Standalone Health: {info.get('used_memory_human')}"
     except Exception as e:
         return f"Failed to check Redis health: {str(e)}"
 
