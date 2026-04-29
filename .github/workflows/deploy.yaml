@@ -56,6 +56,14 @@ jobs:
           aws-region: us-east-1
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
+      - name: Ensure Terraform state S3 bucket exists
+        working-directory: .
+        run: |
+          aws s3api head-bucket --bucket redis-agent-tfstate 2>/dev/null || \
+          aws s3api create-bucket \
+            --bucket redis-agent-tfstate \
+            --region us-east-1
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
