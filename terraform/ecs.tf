@@ -541,10 +541,10 @@ resource "aws_ecs_task_definition" "redis_bootstrap" {
     image     = "redis:7-alpine"
     essential = true
 
-    # This command creates the cluster with 1 replica per master (3 masters + 3 replicas = 6 nodes)
+    # This command waits for nodes, resets any broken state, and creates the cluster
     command = [
       "sh", "-c",
-      "redis-cli --cluster create redis-0.redis.local:6379 redis-1.redis.local:6379 redis-2.redis.local:6379 redis-3.redis.local:6379 redis-4.redis.local:6379 redis-5.redis.local:6379 --cluster-replicas 1 --cluster-yes"
+      "for i in 0 1 2 3 4 5; do until nc -z redis-$i.redis.local 6379; do echo waiting for redis-$i; sleep 2; done; redis-cli -h redis-$i.redis.local -p 6379 cluster reset hard; done; sleep 5; redis-cli --cluster create redis-0.redis.local:6379 redis-1.redis.local:6379 redis-2.redis.local:6379 redis-3.redis.local:6379 redis-4.redis.local:6379 redis-5.redis.local:6379 --cluster-replicas 1 --cluster-yes"
     ]
 
     logConfiguration = {
