@@ -3,20 +3,10 @@
 # Replaces EKS (blocked by SCP in sandbox)
 ########################################
 
-# ---- ECR Repository for AI Agent ----
-resource "aws_ecr_repository" "agent" {
-  name                 = "redis-agent-platform"
-  image_tag_mutability = "MUTABLE"
-  force_delete         = true
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  tags = {
-    Environment = "prod"
-    Project     = "redis-agent-platform"
-  }
+# ECR repository is created by CI pipeline (Job 1) before Terraform runs.
+# We use a data source here so Terraform simply references the existing repo.
+data "aws_ecr_repository" "agent" {
+  name = "redis-agent-platform"
 }
 
 # ---- ECS Fargate Cluster ----
@@ -191,7 +181,7 @@ resource "aws_ecs_task_definition" "agent" {
 
   container_definitions = jsonencode([{
     name      = "redis-agent"
-    image     = "${aws_ecr_repository.agent.repository_url}:latest"
+    image     = "${data.aws_ecr_repository.agent.repository_url}:latest"
     essential = true
 
     portMappings = [{
@@ -280,5 +270,5 @@ output "agent_url" {
 
 output "ecr_repository_url" {
   description = "ECR Repository URL for the AI Agent"
-  value       = aws_ecr_repository.agent.repository_url
+  value       = data.aws_ecr_repository.agent.repository_url
 }
