@@ -151,3 +151,24 @@ def apply_jitter_or_lock(key: str) -> str:
         return f"Successfully applied jitter to key '{key}'. New TTL is {new_ttl} seconds."
     except Exception as e:
         return f"Failed to apply jitter to '{key}': {str(e)}"
+
+@tool
+def analyze_slow_log(count: int = 10) -> str:
+    """Analyzes the Redis SLOWLOG to identify expensive queries that are causing latency spikes."""
+    try:
+        r = get_redis_client()
+        # In Cluster mode, slow logs are per-node. We scan the first master as a representative sample.
+        slow_queries = r.slowlog_get(num=count)
+        
+        if not slow_queries:
+            return "No slow queries found in the log."
+            
+        report = f"Top {len(slow_queries)} Slow Queries Detected:\n"
+        for q in slow_queries:
+            duration_ms = q['duration'] / 1000
+            command = q['command']
+            report += f"- [Duration: {duration_ms:.2f}ms] Command: {command}\n"
+            
+        return report
+    except Exception as e:
+        return f"Failed to analyze slow log: {str(e)}"

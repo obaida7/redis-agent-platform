@@ -12,7 +12,8 @@ from agent.tools.redis_ops import (
     mitigate_noisy_neighbor,
     detect_cache_stampede,
     apply_jitter_or_lock,
-    get_cluster_nodes
+    get_cluster_nodes,
+    analyze_slow_log
 )
 
 def setup_sre_agent():
@@ -39,7 +40,8 @@ def setup_sre_agent():
         mitigate_noisy_neighbor,
         detect_cache_stampede,
         apply_jitter_or_lock,
-        get_cluster_nodes
+        get_cluster_nodes,
+        analyze_slow_log
     ]
     
     # Define the system prompt
