@@ -10,8 +10,6 @@ class Settings(BaseSettings):
     aws_region: str = "us-east-1"
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
-    k8s_namespace: str = "redis"
-    cluster_name: str = "redis-enterprise"
 
     class Config:
         env_file = ".env"

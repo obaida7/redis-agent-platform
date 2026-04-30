@@ -11,16 +11,14 @@ from agent.tools.redis_ops import (
     detect_noisy_neighbor,
     mitigate_noisy_neighbor,
     detect_cache_stampede,
-    apply_jitter_or_lock
+    apply_jitter_or_lock,
+    get_cluster_nodes
 )
-from agent.tools.k8s_ops import scale_redis_replicas, check_redis_pods_status
 
 def setup_sre_agent():
     """Initializes the Agentic AI platform with Redis SRE tools using AWS Bedrock and LangGraph."""
     
     # Initialize the AWS Boto3 Client
-    # We do not pass credentials here so that boto3 automatically picks them up 
-    # from the ~/.aws/credentials file that was set via 'aws configure'
     bedrock_client = boto3.client(
         service_name="bedrock-runtime",
         region_name=settings.aws_region
@@ -37,23 +35,19 @@ def setup_sre_agent():
     tools = [
         check_redis_health,
         flush_stale_data,
-        scale_redis_replicas,
-        check_redis_pods_status,
         detect_noisy_neighbor,
         mitigate_noisy_neighbor,
         detect_cache_stampede,
-        apply_jitter_or_lock
+        apply_jitter_or_lock,
+        get_cluster_nodes
     ]
     
     # Define the system prompt
     system_message = SystemMessage(content=(
-        "You are an expert Senior Site Reliability Engineer (SRE) and Platform Engineer "
-        "responsible for managing a massive enterprise Redis infrastructure at Wells Fargo. "
-        "You have deep knowledge of Redis architecture, Kubernetes (OpenShift/K8s), and Python automation. "
-        "You can use tools to diagnose issues, check cluster health, and perform operational tasks like scaling. "
-        "If you suspect a 'noisy neighbor' problem, use detect_noisy_neighbor to find abusive clients, "
-        "and mitigate_noisy_neighbor to disconnect them. "
-        "If there are sudden CPU spikes or key expiration issues, use detect_cache_stampede and apply_jitter_or_lock."
+        "You are an expert Senior Site Reliability Engineer (SRE) specializing in Distributed Redis Clusters on AWS ECS Fargate. "
+        "You manage a 6-node (3-Master/3-Replica) production cluster with EFS persistence. "
+        "You have autonomous authority to diagnose sharding imbalances, mitigate noisy neighbors, and prevent cache stampedes. "
+        "Always start by auditing the cluster state using get_cluster_nodes or check_redis_health if an issue is reported."
     ))
     
     # Initialize a tool-calling agent using LangGraph
